@@ -1,0 +1,72 @@
+{
+  "manifest_version": 3,
+  "name": "Focus Mode — Anti-Doomscroll",
+  "version": "1.0.0",
+  "description": "Blocks infinite-scroll and short-form video traps on Instagram, YouTube, and Twitter/X.",
+
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "focus-mode-antidoomscroll@example.com",
+      "strict_min_version": "140.0",
+      "data_collection_permissions": {
+        "required": ["none"]
+      }
+    }
+  },
+
+  "icons": {
+    "48": "icons/icon.svg",
+    "96": "icons/icon.svg"
+  },
+
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_icon": {
+      "48": "icons/icon.svg"
+    },
+    "default_title": "Focus Mode"
+  },
+
+  "permissions": [
+    "storage",
+    "webNavigation",
+    "tabs"
+  ],
+
+  "host_permissions": [
+    "*://*.instagram.com/*",
+    "*://*.youtube.com/*",
+    "*://twitter.com/*",
+    "*://*.twitter.com/*",
+    "*://x.com/*",
+    "*://*.x.com/*"
+  ],
+
+  "background": {
+    "scripts": ["background.js"]
+  },
+
+  "content_scripts": [
+    {
+      "matches": ["*://*.instagram.com/*"],
+      "css": ["css/instagram.css"],
+      "js": ["content-scripts/common.js", "content-scripts/instagram.js"],
+      "run_at": "document_start"
+    },
+    {
+      "matches": ["*://*.youtube.com/*"],
+      "css": ["css/youtube.css"],
+      "js": ["content-scripts/common.js", "content-scripts/youtube.js"],
+      "run_at": "document_start"
+    },
+    {
+      "matches": [
+        "*://twitter.com/*", "*://*.twitter.com/*",
+        "*://x.com/*", "*://*.x.com/*"
+      ],
+      "css": ["css/twitter.css"],
+      "js": ["content-scripts/common.js", "content-scripts/twitter.js"],
+      "run_at": "document_start"
+    }
+  ]
+}

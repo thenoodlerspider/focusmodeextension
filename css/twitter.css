@@ -1,0 +1,12 @@
+/*
+ * Twitter/X — Focus Mode.
+ * The "For You" tab hide + "Following" auto-click happen in JS
+ * (content-scripts/twitter.js) because the tabs have no stable selector.
+ * The Trending module usually does have a stable aria-label, so we hide it
+ * here directly; twitter.js also does a text-based fallback sweep in case
+ * X changes the label.
+ */
+
+html.fm-tw-focus [aria-label="Timeline: Trending now"] {
+  display: none !important;
+}

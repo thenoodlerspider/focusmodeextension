@@ -1,0 +1,40 @@
+/*
+ * Instagram — nav hiding, comments, Following-feed cleanup, Stories tray.
+ * Instagram's own class names are obfuscated and rotate frequently, so we
+ * key off the few things that stay stable: destination hrefs and
+ * aria-labels. Everything gated behind a flag class on <html>, toggled by
+ * content-scripts/common.js based on the user's popup settings.
+ */
+
+/* --- Reels / Explore nav links (v1.0) --- */
+html.fm-ig-block a[href="/reels/"],
+html.fm-ig-block a[href^="/reels/"],
+html.fm-ig-block a[href="/explore/"],
+html.fm-ig-block a[href^="/explore/"] {
+  display: none !important;
+}
+html.fm-ig-block div[role="link"][aria-label="Reels"],
+html.fm-ig-block div[role="link"][aria-label="Explore"] {
+  display: none !important;
+}
+
+/* --- NEW: Comments ---
+ * The comment textarea has a stable aria-label prefix ("Add a comment…"),
+ * so we can hide its wrapping <form> purely in CSS for an instant, zero-JS
+ * hide (covers both the full post page and the post modal/lightbox, since
+ * both reuse the same form markup). The comment *list* itself has no
+ * comparably stable CSS-only anchor — that half is handled by the
+ * sweepComments() heuristic in instagram.js.
+ */
+html.fm-block-comments form:has(textarea[aria-label^="Add a comment"]) {
+  display: none !important;
+}
+
+/*
+ * NOTE on the two other new features — "Suggested for you"/Sponsored post
+ * hiding and the Stories tray — there is no reliable attribute-only CSS
+ * selector for either (they're distinguished by *text content*, which CSS
+ * cannot match). Both are implemented entirely in instagram.js via a
+ * debounced MutationObserver: see sweepSuggestedAndAds() and
+ * sweepStories() there for the exact heuristics and why they were chosen.
+ */
