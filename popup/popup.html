@@ -8,73 +8,45 @@
 <body>
   <header>
     <h1>🎯 Focus Mode</h1>
-    <p class="subtitle">Kill the infinite scroll.</p>
+    <label class="master-toggle-row">
+      <span>Focus Mode enabled</span>
+      <input type="checkbox" id="fmMasterEnabled" data-key="fmMasterEnabled">
+      <span class="switch"></span>
+    </label>
   </header>
 
   <main>
-    <section class="platform">
-      <h2>Instagram</h2>
-      <label class="toggle-row">
-        <span>Block Reels &amp; Explore</span>
-        <input type="checkbox" id="igBlock" data-key="igBlock">
-        <span class="switch"></span>
-      </label>
-      <!-- NEW -->
-      <label class="toggle-row">
-        <span>Force "Following" Feed &amp; Hide Suggested Posts</span>
-        <input type="checkbox" id="igFollowingFeed" data-key="igFollowingFeed">
-        <span class="switch"></span>
-      </label>
-      <!-- NEW -->
-      <label class="toggle-row">
-        <span>Hide Stories Tray</span>
-        <input type="checkbox" id="igHideStories" data-key="igHideStories">
-        <span class="switch"></span>
-      </label>
+    <section class="block">
+      <h2>Pomodoro</h2>
+      <div id="pomodoroIdle" class="pomodoro-row">
+        <select id="pomodoroDuration">
+          <option value="15">15 min</option>
+          <option value="25" selected>25 min</option>
+          <option value="45">45 min</option>
+          <option value="60">60 min</option>
+        </select>
+        <button id="pomodoroStart" type="button">Start session</button>
+      </div>
+      <div id="pomodoroActive" class="pomodoro-row hidden">
+        <span id="pomodoroCountdown">25:00</span>
+        <button id="pomodoroStop" type="button" class="secondary">End early</button>
+      </div>
+      <p class="hint">Focus rules stay on for everyone while a session is running, even if the master switch is off.</p>
     </section>
 
-    <section class="platform">
-      <h2>YouTube</h2>
-      <label class="toggle-row">
-        <span>Block Shorts</span>
-        <input type="checkbox" id="ytBlockShorts" data-key="ytBlockShorts">
-        <span class="switch"></span>
-      </label>
-      <label class="toggle-row">
-        <span>Focus Mode (hide related videos &amp; end screen)</span>
-        <input type="checkbox" id="ytFocusMode" data-key="ytFocusMode">
-        <span class="switch"></span>
-      </label>
-      <!-- NEW -->
-      <label class="toggle-row">
-        <span>Blank Homepage (Search Only)</span>
-        <input type="checkbox" id="ytHideHomepage" data-key="ytHideHomepage">
-        <span class="switch"></span>
-      </label>
+    <section class="block">
+      <h2>Today's usage</h2>
+      <ul id="usageList" class="usage-list"><li class="hint">No tracked sites visited yet today.</li></ul>
     </section>
 
-    <!-- NEW: cross-platform section -->
-    <section class="platform">
-      <h2>Comments</h2>
-      <label class="toggle-row">
-        <span>Block Comments (YouTube &amp; Instagram)</span>
-        <input type="checkbox" id="blockComments" data-key="blockComments">
-        <span class="switch"></span>
-      </label>
-    </section>
-
-    <section class="platform">
-      <h2>Twitter / X</h2>
-      <label class="toggle-row">
-        <span>Focus Mode (Following only, hide Trends)</span>
-        <input type="checkbox" id="twitterFocusMode" data-key="twitterFocusMode">
-        <span class="switch"></span>
-      </label>
+    <section class="block">
+      <button id="pickElement" type="button" class="secondary full-width">🎯 Pick element to block on this page</button>
     </section>
   </main>
 
   <footer>
-    <p>Reload any open tab for changes to fully apply.</p>
+    <button id="openOptions" type="button" class="full-width">Open full settings</button>
+    <p class="hint">Reload an open tab for changes to fully apply.</p>
   </footer>
 
   <script src="popup.js"></script>

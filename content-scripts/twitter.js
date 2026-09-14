@@ -1,26 +1,27 @@
 /**
  * twitter.js
  * Twitter/X doesn't give "For You" vs "Following" distinct URLs — both live
- * under /home and are switched client-side via a tablist. There's also no
- * stable data-testid on the tabs themselves, so unlike Instagram/YouTube we
- * do this hiding/clicking primarily in JS rather than pure CSS.
+ * under /home and are switched client-side via a tablist, and most of its
+ * DOM has no version-stable class names, so this file leans on JS
+ * heuristics keyed off `data-testid` attributes and heading text.
  *
- * - Hides the "For You" tab.
- * - Auto-clicks "Following" if it isn't already the active tab.
- * - Hides the Trends/"What's happening" module in the right rail.
- * All gated behind html.fm-tw-focus (see content-scripts/common.js).
+ *   - Hides the "For You" tab and auto-clicks "Following".
+ *   - Hides the Trends/"What's happening" module and other right-rail
+ *     widgets ("Who to follow", "You might like", Premium upsells).
+ *   - Hides engagement counts (replies/retweets/likes/views) on tweets.
+ *   - Hides unread notification badges (JS fallback for twitter.css's
+ *     inline-style selector, in case X changes how it marks the badge).
  */
 
 (function () {
   'use strict';
 
-  function enabled() {
+  function focusOn() {
     return document.documentElement.classList.contains('fm-tw-focus');
   }
 
   function forceFollowingTab() {
-    if (!enabled()) return;
-    // The tab strip only exists on the Home timeline.
+    if (!focusOn()) return;
     if (!/^\/home\/?$/.test(location.pathname)) return;
 
     const tabs = document.querySelectorAll('[role="tab"]');
@@ -34,31 +35,86 @@
       if (label === 'following') followingTab = tab;
     });
 
-    if (forYouTab) {
-      forYouTab.style.setProperty('display', 'none', 'important');
-    }
+    if (forYouTab) forYouTab.style.setProperty('display', 'none', 'important');
     if (followingTab && followingTab.getAttribute('aria-selected') !== 'true') {
       followingTab.click();
     }
   }
 
-  function hideTrends() {
-    if (!enabled()) return;
-    // Primary target: the aria-labelled trending region (see twitter.css).
-    // Fallback: match on the section heading text, since X occasionally
-    // renames/rewraps this module.
+  // ---------------------------------------------------------------------
+  // Sidebar module hiding — generalized beyond just Trends to cover
+  // "Who to follow", "You might like", and Premium upsells. Matched by
+  // heading text since X occasionally renames/rewraps these modules.
+  // ---------------------------------------------------------------------
+  const SIDEBAR_PATTERNS = /trending|what.?s happening|who to follow|you might like|subscribe to (x )?premium/i;
+
+  function hideSidebarModules() {
+    if (!focusOn() && !document.documentElement.classList.contains('fm-tw-hide-sidebar')) return;
     document.querySelectorAll('div[aria-label] h2, aside h2, section h2').forEach((h) => {
       const text = h.textContent?.trim();
-      if (text && /trending|what.?s happening|trends for you/i.test(text)) {
+      if (text && SIDEBAR_PATTERNS.test(text)) {
         const container = h.closest('section, div[aria-label]');
         if (container) container.style.setProperty('display', 'none', 'important');
       }
     });
   }
 
+  // ---------------------------------------------------------------------
+  // Hide engagement counts (replies/retweets/likes/views)
+  //
+  // Each action button (reply/retweet/like) carries a stable data-testid;
+  // the visible count is a leaf <span> inside it. We hide just that span
+  // so the buttons stay clickable and the layout doesn't jump. The view
+  // count has no data-testid of its own — it's the last link in the
+  // action group, whose text is a bare number/K/M figure — matched by
+  // text pattern instead.
+  // ---------------------------------------------------------------------
+  const COUNT_TESTIDS = ['reply', 'retweet', 'unretweet', 'like', 'unlike'];
+  const NUMERIC_PATTERN = /^[\d,.]+[KMB]?$/;
+
+  function hideMetrics() {
+    if (!document.documentElement.classList.contains('fm-tw-hide-metrics')) return;
+
+    COUNT_TESTIDS.forEach((testid) => {
+      document.querySelectorAll(`[data-testid="${testid}"] span`).forEach((span) => {
+        if (span.children.length === 0 && NUMERIC_PATTERN.test(span.textContent?.trim() || '')) {
+          span.style.setProperty('display', 'none', 'important');
+        }
+      });
+    });
+
+    // View counts: a plain span/a inside the tweet's action group whose
+    // text is just a number — not tied to a testid, so scope the search
+    // to role="group" (the action bar) to avoid touching unrelated numbers.
+    document.querySelectorAll('[role="group"] span').forEach((span) => {
+      if (span.children.length === 0 && NUMERIC_PATTERN.test(span.textContent?.trim() || '')) {
+        span.style.setProperty('display', 'none', 'important');
+      }
+    });
+  }
+
+  // ---------------------------------------------------------------------
+  // Notification badges — JS fallback in case X's inline-style badge
+  // marker (targeted directly in twitter.css) changes shape.
+  // ---------------------------------------------------------------------
+  function hideNotifBadges() {
+    if (!document.documentElement.classList.contains('fm-tw-hide-notif')) return;
+    document.querySelectorAll('[data-testid="AppTabBar_Notifications_Link"], [data-testid="AppTabBar_DirectMessage_Link"]')
+      .forEach((link) => {
+        link.querySelectorAll('div, span').forEach((el) => {
+          if (el.children.length === 0 && el.textContent?.trim() === '' &&
+            getComputedStyle(el).backgroundColor !== 'rgba(0, 0, 0, 0)') {
+            el.style.setProperty('display', 'none', 'important');
+          }
+        });
+      });
+  }
+
   function sweep() {
     forceFollowingTab();
-    hideTrends();
+    hideSidebarModules();
+    hideMetrics();
+    hideNotifBadges();
   }
 
   sweep();

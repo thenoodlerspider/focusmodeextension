@@ -2,33 +2,43 @@
  * instagram.js
  *
  * Handles everything Instagram-specific:
- *   1. Reels/Explore redirect                              (v1.0, unchanged)
- *   2. Force "Following" feed via ?variant=following redirect (UPDATED)
- *   3. Hide "Suggested for you" / Sponsored posts            (v1.1)
- *   4. Hide the Stories tray                                  (v1.1)
- *   5. Hide comment lists + comment input forms,
- *      including inside the post modal/lightbox               (v1.1)
+ *   1. Reels/Explore redirect, and Smart Home redirect to the inbox
+ *      (mutually exclusive with #2 — both target the home route, and
+ *      igSmartHomeRedirect wins if both are on; see background.js).
+ *   2. Force "Following" feed via ?variant=following redirect.
+ *   3. Hide "Suggested for you" / Sponsored posts.
+ *   4. Hide the Stories tray.
+ *   5. Hide comment lists + comment input forms.
+ *   6. Hide vanity metrics (like/view/comment counts).
+ *   7. Hide notification & DM unread badges.
+ *   8. Disable infinite scroll — cap the feed at N posts behind a manual
+ *      "Show more" button.
+ *
+ * Direct-link whitelisting note: Instagram already gives individual reel
+ * permalinks a *singular* path (/reel/<id>/) distinct from the Reels tab
+ * (/reels/, plural) that igBlock targets — so a reel link shared in a chat
+ * already opens fine even with igBlock on. We only need fmIsDirectOpen()
+ * here to additionally hide the auto-queued "up next" reels stacked below
+ * the one the user actually opened.
  *
  * Instagram ships obfuscated, frequently-rotated class names, so — per the
  * project's CSS-first rule — we use CSS wherever there's a stable attribute
  * to key off (href, aria-label), and fall back to a debounced
- * MutationObserver + heuristic JS matching for everything else ("Suggested
- * for you" text, story avatar counts). Every heuristic below is commented
- * with what it's matching and why.
+ * MutationObserver + heuristic JS matching for everything else.
  */
 
 (function () {
   'use strict';
 
   // ---------------------------------------------------------------------
-  // 1. Reels / Explore redirect (unchanged from v1.0)
+  // 1 & 2. Redirects on load + SPA route changes
   // ---------------------------------------------------------------------
   function isBlockedPath(pathname) {
     return /^\/reels\/?/.test(pathname) || /^\/explore\/?/.test(pathname);
   }
 
   function redirectIfBlocked(settings) {
-    if (!settings.igBlock) return;
+    if (!settings.igBlock) return false;
     if (isBlockedPath(location.pathname)) {
       location.replace('https://www.instagram.com/');
       return true;
@@ -36,27 +46,22 @@
     return false;
   }
 
-  // ---------------------------------------------------------------------
-  // 2. Force "Following" feed — every time Instagram is opened
-  //
-  // Instagram recognizes a `?variant=following` query param on the home
-  // route that switches the feed to chronological/Following mode. Rather
-  // than simulating clicks on IG's feed-switcher UI (which has no stable
-  // selector and has changed shape more than once), we simply redirect the
-  // home route to that URL — the same pattern already used for the
-  // Reels/Explore block above.
-  //
-  // Guard: only redirect when the param is MISSING, so we don't create a
-  // redirect loop (once the URL is .../?variant=following, this check is a
-  // no-op on subsequent runs).
-  // ---------------------------------------------------------------------
+  function redirectSmartHome(settings) {
+    if (!settings.igSmartHomeRedirect) return false;
+    const url = new URL(location.href);
+    const isHomeRoute = url.pathname === '/' || url.pathname === '';
+    if (isHomeRoute) {
+      location.replace('https://www.instagram.com/direct/inbox/');
+      return true;
+    }
+    return false;
+  }
+
   function redirectToFollowingVariant(settings) {
     if (!settings.igFollowingFeed) return false;
-
     const url = new URL(location.href);
     const isHomeRoute = url.pathname === '/' || url.pathname === '';
     const alreadyFollowing = url.searchParams.get('variant') === 'following';
-
     if (isHomeRoute && !alreadyFollowing) {
       location.replace('https://www.instagram.com/?variant=following');
       return true;
@@ -64,21 +69,16 @@
     return false;
   }
 
-  // Run both redirect checks together on page load — whichever applies wins.
-  fmGetSettings((settings) => {
-    if (!redirectIfBlocked(settings)) redirectToFollowingVariant(settings);
-  });
+  function runRedirects(settings) {
+    if (redirectIfBlocked(settings)) return;
+    if (redirectSmartHome(settings)) return;
+    redirectToFollowingVariant(settings);
+  }
+
+  fmGetSettings(runRedirects);
 
   // ---------------------------------------------------------------------
   // 3. Hide "Suggested for you" / Sponsored posts
-  //
-  // Per the project's own convention, Instagram wraps every feed post in an
-  // <article>. Rather than trying to isolate the exact suggested-content
-  // wrapper (which changes shape often), we scan each <article>'s text for
-  // the "Suggested for you" label or the word "Sponsored" that Instagram
-  // renders in the post header, and hide the whole article if matched.
-  // Trade-off: a caption that happens to literally say "sponsored" would
-  // also be hidden — an acceptable false positive for a focus tool.
   // ---------------------------------------------------------------------
   function sweepSuggestedAndAds(root) {
     if (!document.documentElement.classList.contains('fm-ig-following')) return;
@@ -93,12 +93,6 @@
 
   // ---------------------------------------------------------------------
   // 4. Hide the Stories tray
-  //
-  // Story avatars in the tray carry an aria-label containing "story" (e.g.
-  // "<user>'s story"). We look for <ul> elements that contain SEVERAL such
-  // avatars — requiring at least 3 matches — so we hide the actual tray
-  // (a row of many avatars) without accidentally hiding an unrelated single
-  // "Add to your story" action button elsewhere in the UI.
   // ---------------------------------------------------------------------
   function sweepStories(root) {
     if (!document.documentElement.classList.contains('fm-ig-hide-stories')) return;
@@ -112,17 +106,7 @@
   }
 
   // ---------------------------------------------------------------------
-  // 5. Hide comments (list + input form), including inside the post modal
-  //
-  // The comment textarea has a stable aria-label ("Add a comment…"), which
-  // is also targeted directly in css/instagram.css for an instant, JS-free
-  // hide. Here we additionally hide the comment *list*: a heuristic match
-  // on <ul> elements whose <li> children contain a "Like" button svg, which
-  // in practice only matches actual comment lists (post galleries/carousels
-  // don't have per-item like buttons). This function runs identically
-  // whether the comments are on the full post page or inside the
-  // role="dialog" lightbox modal — no separate modal-specific code needed,
-  // since the same DOM patterns are reused inside the modal.
+  // 5. Hide comments (list + input form)
   // ---------------------------------------------------------------------
   function sweepComments(root) {
     if (!document.documentElement.classList.contains('fm-block-comments')) return;
@@ -141,8 +125,105 @@
   }
 
   // ---------------------------------------------------------------------
-  // Reels/Explore nav-link hiding fallback (unchanged from v1.0) — kept
-  // here since it shares the same observer plumbing as the new sweeps.
+  // 6. Hide vanity metrics — like / view / comment counts
+  //
+  // Instagram renders these as a <span> or <a> whose text matches
+  // "N likes", "N views", or "View all N comments" near the top of each
+  // post's action bar. We match on that text pattern rather than any
+  // class, and blank the text node in place (keeping the element, since
+  // removing it can collapse layout/click targets other code relies on).
+  // ---------------------------------------------------------------------
+  const METRIC_PATTERN = /^(view all |see all )?[\d,.]+\s*(likes?|views?|comments?)$/i;
+  function sweepVanityMetrics(root) {
+    if (!document.documentElement.classList.contains('fm-ig-hide-metrics')) return;
+    if (!root.querySelectorAll) return;
+    root.querySelectorAll('a, span, section').forEach((el) => {
+      if (el.children.length > 0) return; // only leaf text nodes
+      const text = el.textContent?.trim();
+      if (text && METRIC_PATTERN.test(text)) {
+        el.style.setProperty('display', 'none', 'important');
+      }
+    });
+  }
+
+  // ---------------------------------------------------------------------
+  // 7. Hide notification & DM unread badges
+  //
+  // Beyond the CSS aria-label rule in instagram.css, badges are often a
+  // small nav-icon child with only a number as its text content — match
+  // that heuristically on the Home/Direct/Notifications nav icons only,
+  // to avoid blanking unrelated numeric text elsewhere on the page.
+  // ---------------------------------------------------------------------
+  function sweepNotifBadges(root) {
+    if (!document.documentElement.classList.contains('fm-ig-hide-notif')) return;
+    if (!root.querySelectorAll) return;
+    root.querySelectorAll('a[href="/direct/inbox/"] span, [aria-label="Notifications"] span').forEach((span) => {
+      if (span.children.length === 0 && /^\d+\+?$/.test(span.textContent?.trim() || '')) {
+        span.style.setProperty('display', 'none', 'important');
+      }
+    });
+  }
+
+  // ---------------------------------------------------------------------
+  // 8. Disable infinite scroll — cap the main feed at N posts
+  //
+  // Instead of fighting Instagram's fetch-on-scroll internals, we simply
+  // hide every <article> in the main feed past the configured limit and
+  // show a manual "Show more" button. Clicking it reveals the next batch
+  // client-side; Instagram's own lazy-loading may still fetch further
+  // posts in the background, but the user never sees them without an
+  // explicit click, which is what actually breaks the "just one more"
+  // scroll habit.
+  // ---------------------------------------------------------------------
+  let feedRevealCount = null; // null until initialized from settings
+
+  function buildShowMoreButton(limit) {
+    const btn = document.createElement('button');
+    btn.id = 'fm-feed-show-more';
+    btn.type = 'button';
+    btn.textContent = `Show ${limit} more posts`;
+    btn.style.cssText =
+      'display:block;margin:24px auto;padding:10px 20px;border-radius:999px;' +
+      'border:1px solid #363636;background:transparent;color:inherit;font-size:14px;cursor:pointer;';
+    btn.addEventListener('click', () => {
+      feedRevealCount += limit;
+      sweepFeedLimit(document.body);
+    });
+    return btn;
+  }
+
+  function sweepFeedLimit(root) {
+    if (!document.documentElement.classList.contains('fm-ig-limit-feed')) return;
+    fmGetSettings((settings) => {
+      const limit = settings.igFeedPostLimit || 4;
+      if (feedRevealCount === null) feedRevealCount = limit;
+
+      // Only apply to the main timeline feed, not a single post's page or
+      // a profile grid — those are <main><article> without a feed <section>
+      // wrapper repeated many times.
+      const main = document.querySelector('main');
+      if (!main) return;
+      const articles = Array.from(main.querySelectorAll(':scope > div > div > article, section > article'));
+      if (articles.length <= 1) return;
+
+      articles.forEach((article, i) => {
+        article.style.display = i < feedRevealCount ? '' : 'none';
+      });
+
+      const existingBtn = document.getElementById('fm-feed-show-more');
+      if (articles.length > feedRevealCount) {
+        if (!existingBtn) {
+          const btn = buildShowMoreButton(limit);
+          articles[feedRevealCount - 1].insertAdjacentElement('afterend', btn);
+        }
+      } else if (existingBtn) {
+        existingBtn.remove();
+      }
+    });
+  }
+
+  // ---------------------------------------------------------------------
+  // Reels/Explore nav-link hiding fallback (shares the observer plumbing)
   // ---------------------------------------------------------------------
   const HIDE_LABELS = ['Reels', 'Explore'];
   function hideByAriaLabel(root) {
@@ -165,6 +246,9 @@
     sweepSuggestedAndAds(root);
     sweepStories(root);
     sweepComments(root);
+    sweepVanityMetrics(root);
+    sweepNotifBadges(root);
+    sweepFeedLimit(root);
   }
 
   const debouncedSweep = fmDebounce((nodes) => nodes.forEach(sweep), 100);
@@ -187,24 +271,18 @@
   else document.addEventListener('DOMContentLoaded', start);
 
   // ---------------------------------------------------------------------
-  // SPA route-change handling — shared by the Reels/Explore redirect (#1)
-  // and the Following-feed redirect (#2). Instagram uses pushState/
-  // replaceState + popstate for internal navigation (e.g. clicking the
-  // Home icon doesn't reload the page), so we intercept the History API
-  // the same way v1.0 already did.
-  //
+  // SPA route-change handling — Instagram uses pushState/replaceState +
+  // popstate for internal navigation, so we intercept the History API.
   // We track the full href (not just pathname) because clicking "Home"
   // while already on "/" can strip just the ?variant=following query
-  // param via pushState without changing the pathname at all — a
-  // pathname-only comparison would miss that case.
+  // param via pushState without changing the pathname at all.
   // ---------------------------------------------------------------------
   let lastHref = location.href;
   function onRouteChange() {
     if (location.href === lastHref) return;
     lastHref = location.href;
-    fmGetSettings((settings) => {
-      if (!redirectIfBlocked(settings)) redirectToFollowingVariant(settings);
-    });
+    feedRevealCount = null; // reset the "Show more" progress on a fresh route
+    fmGetSettings(runRedirects);
   }
 
   ['pushState', 'replaceState'].forEach((method) => {
