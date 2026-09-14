@@ -1,0 +1,28 @@
+/*
+ * picker.css
+ * Injected only while the element picker (content-scripts/element-picker.js)
+ * is active — not part of any content_scripts entry in manifest.json.
+ */
+#fm-picker-highlight {
+  position: absolute;
+  z-index: 2147483647;
+  background: rgba(29, 155, 240, 0.25);
+  outline: 2px solid #1d9bf0;
+  pointer-events: none;
+  transition: top 0.05s linear, left 0.05s linear, width 0.05s linear, height 0.05s linear;
+}
+
+#fm-picker-hint {
+  position: fixed;
+  z-index: 2147483647;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #16181c;
+  color: #e7e9ea;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+  font-size: 13px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+}

@@ -1,0 +1,54 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Focus Mode</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <header>
+    <h1>🎯 Focus Mode</h1>
+    <label class="master-toggle-row">
+      <span>Focus Mode enabled</span>
+      <input type="checkbox" id="fmMasterEnabled" data-key="fmMasterEnabled">
+      <span class="switch"></span>
+    </label>
+  </header>
+
+  <main>
+    <section class="block">
+      <h2>Pomodoro</h2>
+      <div id="pomodoroIdle" class="pomodoro-row">
+        <select id="pomodoroDuration">
+          <option value="15">15 min</option>
+          <option value="25" selected>25 min</option>
+          <option value="45">45 min</option>
+          <option value="60">60 min</option>
+        </select>
+        <button id="pomodoroStart" type="button">Start session</button>
+      </div>
+      <div id="pomodoroActive" class="pomodoro-row hidden">
+        <span id="pomodoroCountdown">25:00</span>
+        <button id="pomodoroStop" type="button" class="secondary">End early</button>
+      </div>
+      <p class="hint">Focus rules stay on for everyone while a session is running, even if the master switch is off.</p>
+    </section>
+
+    <section class="block">
+      <h2>Today's usage</h2>
+      <ul id="usageList" class="usage-list"><li class="hint">No tracked sites visited yet today.</li></ul>
+    </section>
+
+    <section class="block">
+      <button id="pickElement" type="button" class="secondary full-width">🎯 Pick element to block on this page</button>
+    </section>
+  </main>
+
+  <footer>
+    <button id="openOptions" type="button" class="full-width">Open full settings</button>
+    <p class="hint">Reload an open tab for changes to fully apply.</p>
+  </footer>
+
+  <script src="popup.js"></script>
+</body>
+</html>

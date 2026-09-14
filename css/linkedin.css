@@ -1,0 +1,13 @@
+/*
+ * LinkedIn — blank the main feed and hide the "LinkedIn News" sidebar
+ * module while leaving Jobs, Messaging, and Search fully functional.
+ * LinkedIn's class names are largely stable BEM-style (scaffold-layout__*)
+ * so most of this is plain CSS; the news module is matched by heading
+ * text in linkedin.js since its wrapper class rotates across redesigns.
+ */
+
+html.fm-li-blank-feed main.scaffold-layout__main .scaffold-finite-scroll,
+html.fm-li-blank-feed div.feed-shared-update-v2,
+html.fm-li-blank-feed div[data-finite-scroll-hotkey-item] {
+  display: none !important;
+}
